@@ -14,7 +14,7 @@ defaults = {
 class Track:
     def __init__( self, master, inx ):
         frame = Frame( master, **defaults )
-        frame['padx'] = 10
+        frame['padx'] = 15
         frame.pack( side=LEFT ) #.grid( row=1 )
 
         self.base_url = '/track/%d/' % inx
@@ -25,7 +25,7 @@ class Track:
             'height': 20,
             'text': 'TRACK %d' % inx,
             'on': False,
-            'url': '/track/1/on/'
+            'url': '/track/%d/on/' % inx
         }
         onoff = Toggle( frame, **opts )
         onoff.pack()
@@ -57,27 +57,27 @@ class Track:
         self.speakers = [
             {
                 'x':   0, 'y':   0, 'a': 'nw',
-                't': Toggle( master, on=True, url=self.base_url+'speaker/0/on/' )
+                't': Toggle( frame, on=True, url=self.base_url+'speaker/0/on/' )
             },
             {
                 'x': 100, 'y':   0, 'a': 'ne',
-                't': Toggle( master, on=True, url=self.base_url+'speaker/1/on/' )
+                't': Toggle( frame, on=True, url=self.base_url+'speaker/1/on/' )
             },
             {
                 'x':   0, 'y':  50, 'a':  'w',
-                't': Toggle( master, on=True, url=self.base_url+'speaker/2/on/' )
+                't': Toggle( frame, on=True, url=self.base_url+'speaker/2/on/' )
             },
             {
                 'x': 100, 'y':  50, 'a':  'e',
-                't': Toggle( master, on=True, url=self.base_url+'speaker/3/on/' )
+                't': Toggle( frame, on=True, url=self.base_url+'speaker/3/on/' )
             },
             {
                 'x':   0, 'y': 100, 'a': 'sw',
-                't': Toggle( master, on=True, url=self.base_url+'speaker/4/on/' )
+                't': Toggle( frame, on=True, url=self.base_url+'speaker/4/on/' )
             },
             {
                 'x': 100, 'y': 100, 'a': 'se',
-                't': Toggle( master, on=True, url=self.base_url+'speaker/5/on/' )
+                't': Toggle( frame, on=True, url=self.base_url+'speaker/5/on/' )
             }
         ]
 
@@ -92,6 +92,19 @@ class Track:
                                               fill='#6bbb7b', outline='' )
         # listen to the head's move
         self.cv.bind('<B1-Motion>', self.move_head )
+
+        # separator
+        opts = { 'height': 10 }
+        opts.update( defaults )
+        Frame( frame, **opts ).pack()
+
+        # inputs
+        inputs = Frame( frame, **defaults )
+        inputs.pack( side=BOTTOM )
+        for i in range( 4 ):
+            Toggle( inputs, text=i,
+                    width=17, 
+                    url='%sinput/%d/on/' % ( self.base_url, i ) ).pack( side=LEFT, padx=5 )
 
 
     def move_head( self, event ):
@@ -154,7 +167,7 @@ class Toggle( Frame ):
         self.background = options.setdefault('background', bg)
         self.relief     = options.setdefault('relief', 'flat')
         self.bd         = options.setdefault('bd', 0)
-        self.hlt        = options.setdefault( 'highlightthickness', 0 )
+        self.hlt        = options.setdefault('highlightthickness', 0)
 
 
         Frame.__init__( self, master, options )
@@ -191,7 +204,7 @@ class Toggle( Frame ):
 
     def _extract_options(self, options):
         # these are the options not applicable to a frame
-        self.text = self.pop( options, 'text', 'ONOFF')
+        self.text = self.pop( options, 'text', 'ON/OFF')
         self.on   = self.pop( options, 'on', False )
         self.url  = self.pop( options, 'url', '/toggle/on/' )
 
@@ -215,8 +228,8 @@ class Toggle( Frame ):
 
 root = Tk()
 root['bg'] = '#2b2b2b'
-root['padx'] = 15
-root['pady'] = 15
+root['padx'] = 25
+root['pady'] = 25
 
 for i in range( 6 ):
     Track( root, i )
