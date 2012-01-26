@@ -7,10 +7,11 @@ class Speaker extends Button {
         mute = false;
     }
 
-    public void mute() {
+    public boolean mute() {
         if( this.is_hit() ) {
             mute = !mute;
         }
+        return mute;
     }
 
     public boolean is_mute() {

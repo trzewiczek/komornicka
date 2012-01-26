@@ -2,7 +2,7 @@ class Toggle {
   
   public Toggle( String ulabel, int ux, int uy ) {
     label = ulabel;
-    area  = new Rectangle( ux, uy, 10, 10 );
+    area  = new Rectangle( ux, uy, 15, 15 );
     on = false;
   }
   
@@ -12,9 +12,12 @@ class Toggle {
     on = false;
   }
   
-  public boolean toggle() {
+  public void toggle() {
     on = !on;
-    return on;
+  }
+  
+  public void off() {
+    on = false;
   }
   
   public void render() {

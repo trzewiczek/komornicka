@@ -1,35 +1,39 @@
 class Track {
   public Track( int ux, int uy, int inx ) {
     area = new Rectangle( ux, uy, 100, 100 );
-    panel  = new Hexapane( ux, uy + 25 );
+    panel  = new Hexapane( ux, uy + 25, inx );
     number = inx;
     mute   = new Toggle( "TRACK " + inx, ux, uy, 100, 15 );
 
     inputs = new Toggle[6];
     for( int i = 0; i < inputs.length; ++i ) {
-      inputs[i] = new Toggle( i+"", ux + ( i * 17 ), uy + 140, 15, 15 );
+      inputs[i] = new Toggle( i+"", ux + ( i * 17 ), uy + 140 );
     }
   }
   
   public void render() {
-    pushStyle();
-    
-    fill( 150 );
     panel.render();
     mute.render();
     for( int i = 0; i < inputs.length; ++i ) {
       inputs[i].render();
     }    
-    
-    popStyle();
   }
   
   public void click() {
+    String osc = "/track/" + number + "/mute/";
+    
     panel.click();
-    mute.click();
+    osc += mute.click();
+    osc += "/inputs/";
     for( int i = 0; i < inputs.length; ++i ) {
-      inputs[i].click();
+      if( inputs[i].click() ) {
+        osc += i+",";
+      }
     }    
+    if( osc.endsWith(",") ) {
+      osc = osc.substring( 0, osc.length()-1 );
+    }
+    println( osc );
   }
   
   public void drag() {
