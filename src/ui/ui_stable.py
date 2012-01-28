@@ -2,7 +2,14 @@
 from Tkinter import *
 import tkFont
 import math
+import sys
 import liblo
+import pickle
+
+try:
+    DEBUG = True if sys.argv[1] == 'DEBUG' else False
+except:
+    DEBUG = False
 
 target = liblo.Address( 5600 )
 defaults = {
@@ -27,8 +34,8 @@ class Track:
             'on': False,
             'url': '/track/%d/on/' % inx
         }
-        onoff = Toggle( frame, **opts )
-        onoff.pack()
+        self.onoff = Toggle( frame, **opts )
+        self.onoff.pack()
 
         # mute button to hexapanel separator
         opts = { 'height': 10 }
@@ -88,7 +95,10 @@ class Track:
                                    window=s['t'] )
 
         # create panorama head
-        self.head = self.cv.create_rectangle( 62, 47, 68, 53,
+        self.hx = 65
+        self.hy = 50
+        self.head = self.cv.create_rectangle( self.hx - 3, self.hy - 3,
+                                              self.hx + 3, self.hy + 3,
                                               fill='#6bbb7b', outline='' )
         # listen to the head's move
         self.cv.bind('<B1-Motion>', self.move_head )
@@ -98,13 +108,67 @@ class Track:
         opts.update( defaults )
         Frame( frame, **opts ).pack()
 
-        # inputs
-        inputs = Frame( frame, **defaults )
-        inputs.pack( side=BOTTOM )
+        # inputs container
+        inputs_frame = Frame( frame, **defaults )
+        inputs_frame.pack( side=BOTTOM )
+        # create and collect references to inputs objects
+        self.inputs = []
         for i in range( 4 ):
-            Toggle( inputs, text=i,
-                    width=17, 
-                    url='%sinput/%d/on/' % ( self.base_url, i ) ).pack( side=LEFT, padx=5 )
+            self.inputs.append( Toggle( inputs_frame, text=i,
+                                width=17,
+                                url='%sinput/%d/on/' % ( self.base_url, i ) ) )
+            self.inputs[-1].pack( side=LEFT, padx=5 )
+
+    def set_state( self, state={} ):
+        try:
+            self.base_url = state['base_url']
+        except:
+            pass
+
+        # move it to a new position
+        self.hx, self.hy = state.get('head_position', (65, 50))
+        self.cv.coords( self.head, self.hx-3, self.hy-3, self.hx+3, self.hy+3 )
+
+        # mute buttom
+        self.onoff.set_state( state.get('mute', False) )
+
+        # TODO see how to map two lists at once
+        speakers_state = state.get( 'speakers', [1 for s in self.speakers] )
+        for speaker, stored_state in zip( self.speakers, speakers_state ):
+            speaker['t'].set_state( stored_state )
+
+        # TODO see how to map two lists at once
+        inputs_state = state.get( 'inputs', [0 for i in self.inputs] )
+        for input, stored_state in zip( self.inputs, inputs_state ):
+            input.set_state( stored_state )
+
+    def get_state( self ):
+        return {
+            'base_url': self.base_url,
+            'head_position': ( self.hx, self.hy ),
+            'speakers': map( (lambda e: e['t'].get_state()), self.speakers ),
+            'inputs': map( Toggle.get_state, self.inputs ),
+            'mute': self.onoff.get_state()
+        }
+
+    def send_state( self ):
+        # track mute button
+        self.onoff.send_state()
+
+        # speakers on/off
+        for s in self.speakers:
+            s['t'].send_state()
+
+        # inputs
+        map( Toggle.send_state, self.inputs )
+
+        # head's distance
+        for i, s in enumerate( self.speakers ):
+            url = "%s%s%s" % ( self.base_url, 'head/distance/', i )
+            if DEBUG:
+                print '%s :: %s' % ( url, self.get_distance( s['x'], s['y'] ))
+
+            liblo.send( target, url, self.get_distance( s['x'], s['y'] ))
 
 
     def move_head( self, event ):
@@ -119,6 +183,9 @@ class Track:
         # send OSC information about new distance from each speaker
         for i, s in enumerate( self.speakers ):
             url = "%s%s%s" % ( self.base_url, 'head/distance/', i )
+            if DEBUG:
+                print '%s :: %s' % ( url, self.get_distance( s['x'], s['y'] ))
+
             liblo.send( target, url, self.get_distance( s['x'], s['y'] ))
 
 
@@ -209,7 +276,20 @@ class Toggle( Frame ):
         self.url  = self.pop( options, 'url', '/toggle/on/' )
 
 
-    def toggle( self, event ):
+    def set_state( self, state ):
+        self.on = not bool( state )
+        self.toggle()
+
+    def get_state( self ):
+        return self.on
+
+    def send_state( self ):
+        if DEBUG:
+            print "%s :: %s" % ( self.url, 1 if self.on else 0 )
+        liblo.send( target, self.url, 1 if self.on else 0 )
+
+
+    def toggle( self, event=None ):
         self.on = not self.on
 
         if self.on:
@@ -219,11 +299,24 @@ class Toggle( Frame ):
             self.cv['background'] = '#4e4e4e'
             self.cv.itemconfigure( self.label, fill='#9b9b9b' )
 
+        if DEBUG:
+            print "%s :: %s" % ( self.url, 1 if self.on else 0 )
         liblo.send( target, self.url, 1 if self.on else 0 )
 
         return self.on
 
 
+def save_state( tracks ):
+    state = [ e.get_state() for e in tracks ]
+    try:
+        pickle.dump( state, open('ui_state', 'wb') )
+        if DEBUG:
+            print "State save!"
+    except Exception as e:
+        print "-----------------"
+        print ">> Can't save the state"
+        print e
+        print "-----------------"
 
 
 root = Tk()
@@ -231,7 +324,56 @@ root['bg'] = '#2b2b2b'
 root['padx'] = 25
 root['pady'] = 25
 
+tracks_frame = Frame( root, **defaults )
+tracks_frame.pack()
+
+tracks = []
 for i in range( 6 ):
-    Track( root, i )
+    tracks.append( Track( tracks_frame, i ) )
+
+try:
+    scenes = pickle.load( open('ui_state', 'rb') )
+    # TODO make it run on first list from scenes!
+    for t, s in zip( tracks, scenes ):
+        t.set_state( s )
+except:
+    pass
+
+if DEBUG:
+    for t in tracks:
+        t.send_state()
+
+opts = { 'height': 20 }
+opts.update( defaults )
+Frame( root, **opts ).pack()
+
+state_frame = Frame( root, **defaults )
+state_frame.pack( side=LEFT )
+
+scenes_switch = []
+for i in range( len(scenes) ):
+    opts = {
+        'text': i,
+        'width': 15
+    }
+    opts.update( defaults )
+    t = Toggle( state_frame, **opts )
+    t.pack( side=LEFT )
+    scenes_switch.append( t )
+
+scenes_switch[0].toggle()
+
+
+save = Button( state_frame, **defaults )
+save['command'] = ( lambda: save_state(tracks) )
+save['fg'] = '#9b9b9b'
+save['text'] = 'SAVE'
+save.pack( side=LEFT )
+
+reset = Button( state_frame, **defaults )
+reset['command'] = ( lambda: map(Track.set_state, tracks) )
+reset['fg'] = '#9b9b9b'
+reset['text'] = 'RESET'
+reset.pack( side=LEFT )
 
 root.mainloop()
