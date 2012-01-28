@@ -3,15 +3,19 @@ from Tkinter import *
 import tkFont
 import math
 import sys
-import liblo
 import pickle
+import OSC
+
+# OSC setup
+send_address = '127.0.0.1', 5600
+c = OSC.OSCClient()
+c.connect( send_address )
 
 try:
     DEBUG = True if sys.argv[1] == 'DEBUG' else False
 except:
     DEBUG = False
 
-target = liblo.Address( 5600 )
 defaults = {
     'bd': 0,
     'bg': '#2b2b2b',
@@ -162,13 +166,18 @@ class Track:
         # inputs
         map( Toggle.send_state, self.inputs )
 
-        # head's distance
+        # send OSC information about new distance from each speaker
+        # prepare message
+        msg = OSC.OSCMessage()
+        msg.setAddress( self.base_url + '/head/distance' )
         for i, s in enumerate( self.speakers ):
-            url = "%s%s%s" % ( self.base_url, 'head/distance/', i )
+            msg.append( 1.0 - self.get_distance( s['x'], s['y'] ) )
+
             if DEBUG:
                 print '%s :: %s' % ( url, self.get_distance( s['x'], s['y'] ))
 
-            liblo.send( target, url, self.get_distance( s['x'], s['y'] ))
+        # send message
+        c.send( msg ) 
 
 
     def move_head( self, event ):
@@ -181,12 +190,14 @@ class Track:
         self.cv.coords( self.head, self.hx-3, self.hy-3, self.hx+3, self.hy+3 )
 
         # send OSC information about new distance from each speaker
+        # prepare message
+        msg = OSC.OSCMessage()
+        msg.setAddress( self.base_url + '/head/distance' )
         for i, s in enumerate( self.speakers ):
-            url = "%s%s%s" % ( self.base_url, 'head/distance/', i )
-            if DEBUG:
-                print '%s :: %s' % ( url, self.get_distance( s['x'], s['y'] ))
+            msg.append( 1.0 - self.get_distance( s['x'], s['y'] ) )
 
-            liblo.send( target, url, self.get_distance( s['x'], s['y'] ))
+        # send message
+        c.send( msg ) 
 
 
     def constrain( self, n, l, h ):
@@ -286,7 +297,11 @@ class Toggle( Frame ):
     def send_state( self ):
         if DEBUG:
             print "%s :: %s" % ( self.url, 1 if self.on else 0 )
-        liblo.send( target, self.url, 1 if self.on else 0 )
+        msg = OSC.OSCMessage()
+        msg.setAddress( self.url )
+        msg.append( 1 if self.on else 0 )
+
+        c.send( msg )
 
 
     def toggle( self, event=None ):
@@ -301,7 +316,12 @@ class Toggle( Frame ):
 
         if DEBUG:
             print "%s :: %s" % ( self.url, 1 if self.on else 0 )
-        liblo.send( target, self.url, 1 if self.on else 0 )
+
+        msg = OSC.OSCMessage()
+        msg.setAddress( self.url )
+        msg.append( 1 if self.on else 0 )
+
+        c.send( msg )
 
         return self.on
 
@@ -337,7 +357,7 @@ try:
     for t, s in zip( tracks, scenes ):
         t.set_state( s )
 except:
-    pass
+    scenes = [ e.get_state() for e in tracks ]
 
 if DEBUG:
     for t in tracks:
@@ -363,6 +383,9 @@ for i in range( len(scenes) ):
 
 scenes_switch[0].toggle()
 
+opts = { 'width': 15 }
+opts.update( defaults )
+Frame( state_frame, **opts ).pack( side=LEFT )
 
 save = Button( state_frame, **defaults )
 save['command'] = ( lambda: save_state(tracks) )
