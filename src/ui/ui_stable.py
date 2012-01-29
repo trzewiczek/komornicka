@@ -36,7 +36,7 @@ class Track:
             'height': 20,
             'text': 'TRACK %d' % inx,
             'on': False,
-            'url': '/track/%d/on/' % inx
+            'url': '/track/%d/on' % inx
         }
         self.onoff = Toggle( frame, **opts )
         self.onoff.pack()
@@ -68,27 +68,27 @@ class Track:
         self.speakers = [
             {
                 'x':   0, 'y':   0, 'a': 'nw',
-                't': Toggle( frame, on=True, url=self.base_url+'speaker/0/on/' )
+                't': Toggle( frame, on=True, url=self.base_url+'speaker/0/on' )
             },
             {
                 'x': 100, 'y':   0, 'a': 'ne',
-                't': Toggle( frame, on=True, url=self.base_url+'speaker/1/on/' )
+                't': Toggle( frame, on=True, url=self.base_url+'speaker/1/on' )
             },
             {
                 'x':   0, 'y':  50, 'a':  'w',
-                't': Toggle( frame, on=True, url=self.base_url+'speaker/2/on/' )
+                't': Toggle( frame, on=True, url=self.base_url+'speaker/2/on' )
             },
             {
                 'x': 100, 'y':  50, 'a':  'e',
-                't': Toggle( frame, on=True, url=self.base_url+'speaker/3/on/' )
+                't': Toggle( frame, on=True, url=self.base_url+'speaker/3/on' )
             },
             {
                 'x':   0, 'y': 100, 'a': 'sw',
-                't': Toggle( frame, on=True, url=self.base_url+'speaker/4/on/' )
+                't': Toggle( frame, on=True, url=self.base_url+'speaker/4/on' )
             },
             {
                 'x': 100, 'y': 100, 'a': 'se',
-                't': Toggle( frame, on=True, url=self.base_url+'speaker/5/on/' )
+                't': Toggle( frame, on=True, url=self.base_url+'speaker/5/on' )
             }
         ]
 
@@ -120,7 +120,7 @@ class Track:
         for i in range( 4 ):
             self.inputs.append( Toggle( inputs_frame, text=i,
                                 width=17,
-                                url='%sinput/%d/on/' % ( self.base_url, i ) ) )
+                                url='%sinput/%d/on' % ( self.base_url, i ) ) )
             self.inputs[-1].pack( side=LEFT, padx=5 )
 
         self.master_cv = Canvas( frame, **defaults )
@@ -331,7 +331,7 @@ class Toggle( Frame ):
         # these are the options not applicable to a frame
         self.text = self.pop( options, 'text', 'ON/OFF')
         self.on   = self.pop( options, 'on', False )
-        self.url  = self.pop( options, 'url', '/toggle/on/' )
+        self.url  = self.pop( options, 'url', '/toggle/on' )
 
 
     def set_state( self, state ):
