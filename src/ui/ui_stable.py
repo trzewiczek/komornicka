@@ -114,7 +114,7 @@ class Track:
 
         # inputs container
         inputs_frame = Frame( frame, **defaults )
-        inputs_frame.pack( side=BOTTOM )
+        inputs_frame.pack()# side=BOTTOM )
         # create and collect references to inputs objects
         self.inputs = []
         for i in range( 4 ):
@@ -123,11 +123,27 @@ class Track:
                                 url='%sinput/%d/on/' % ( self.base_url, i ) ) )
             self.inputs[-1].pack( side=LEFT, padx=5 )
 
+        self.master_cv = Canvas( frame, **defaults )
+        self.master_cv['bg']     = '#3b3b3b'
+        self.master_cv['width']  = 100
+        self.master_cv['height'] = 10
+        self.master_cv.pack( pady=10 )
+
+        self.mx = 5
+        self.master = self.master_cv.create_rectangle( self.mx-5, 0, self.mx+5, 10,
+                                                       fill='#9b9b9b', outline='' )
+
+        self.master_cv.bind('<B1-Motion>', self.move_master )
+
+
     def set_state( self, state={} ):
         try:
             self.base_url = state['base_url']
         except:
             pass
+
+        self.mx = state.get('master', 5)
+        self.master_cv.coords( self.master, self.mx-5, 0, self.mx+5, 10 )
 
         # move it to a new position
         self.hx, self.hy = state.get('head_position', (65, 50))
@@ -146,14 +162,20 @@ class Track:
         for input, stored_state in zip( self.inputs, inputs_state ):
             input.set_state( stored_state )
 
+
+        self.send_state()
+
+
     def get_state( self ):
         return {
             'base_url': self.base_url,
+            'master': self.mx,
             'head_position': ( self.hx, self.hy ),
             'speakers': map( (lambda e: e['t'].get_state()), self.speakers ),
             'inputs': map( Toggle.get_state, self.inputs ),
             'mute': self.onoff.get_state()
         }
+
 
     def send_state( self ):
         # track mute button
@@ -169,7 +191,7 @@ class Track:
         # send OSC information about new distance from each speaker
         # prepare message
         msg = OSC.OSCMessage()
-        msg.setAddress( self.base_url + '/head/distance' )
+        msg.setAddress( self.base_url + 'head/distance' )
         for i, s in enumerate( self.speakers ):
             msg.append( 1.0 - self.get_distance( s['x'], s['y'] ) )
 
@@ -177,7 +199,32 @@ class Track:
                 print '%s :: %s' % ( url, self.get_distance( s['x'], s['y'] ))
 
         # send message
-        c.send( msg ) 
+        c.send( msg )
+
+        self.move_master()
+
+
+    def move_master( self, event=None ):
+        '''Callback for the head move'''
+        try:
+            # keep master inside range
+            self.mx = self.constrain( event.x, 5, 95 )
+        except:
+            pass
+
+        # move it to a new position
+        self.master_cv.coords( self.master, self.mx-5, 0, self.mx+5, 10 )
+
+        # send OSC information about new distance from each speaker
+        # prepare message
+        msg = OSC.OSCMessage()
+        msg.setAddress( self.base_url + 'master' )
+        # normalize the master range
+        normalized_value = ( self.mx - 5 ) / 90.0
+        msg.append( normalized_value )
+
+        # send message
+        c.send( msg )
 
 
     def move_head( self, event ):
@@ -192,12 +239,12 @@ class Track:
         # send OSC information about new distance from each speaker
         # prepare message
         msg = OSC.OSCMessage()
-        msg.setAddress( self.base_url + '/head/distance' )
+        msg.setAddress( self.base_url + 'head/distance' )
         for i, s in enumerate( self.speakers ):
             msg.append( 1.0 - self.get_distance( s['x'], s['y'] ) )
 
         # send message
-        c.send( msg ) 
+        c.send( msg )
 
 
     def constrain( self, n, l, h ):
