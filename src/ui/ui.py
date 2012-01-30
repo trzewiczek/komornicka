@@ -372,18 +372,83 @@ class Toggle( Frame ):
 
         return self.on
 
+class StateManager:
+    def __init__( self, master, tracks ):
+        frame = Frame( master, **defaults )
+        frame['pady'] = 15
+        frame.pack( side=LEFT )
 
-def save_state( tracks ):
-    state = [ e.get_state() for e in tracks ]
-    try:
-        pickle.dump( state, open('ui_state', 'wb') )
+        self.tracks = tracks
+
+        try:
+            self.scenes = pickle.load( open('ui_state', 'rb') )
+            # TODO make it run on first list from scenes!
+            for t, s in zip( tracks, self.scenes ):
+                t.set_state( s )
+        except:
+            # initialize scenes with a current init state
+            self.scenes = [ [ e.get_state() for e in tracks ] ]
+
         if DEBUG:
-            print "State save!"
-    except Exception as e:
-        print "-----------------"
-        print ">> Can't save the state"
-        print e
-        print "-----------------"
+            for t in tracks:
+                t.send_state()
+
+        self.current_scene = 0
+        self.scenes_switch = []
+        for i in range( len( self.scenes) ):
+            opts = {
+                'text': i,
+                'width': 15
+            }
+            opts.update( defaults )
+            t = Toggle( frame, **opts )
+            t.pack( side=LEFT )
+
+            self.scenes_switch.append( t )
+
+        # highlight the current (first?) scene
+        self.scenes_switch[ self.current_scene ].toggle()
+        frame.bind('<Button-1>', self.click )
+
+        opts = { 'width':15 }
+        opts.update( defaults )
+        Frame( master, **opts ).pack( side=LEFT )
+
+        save = Button( state_frame, **defaults )
+        save['fg'] = '#9b9b9b'
+        save['text'] = 'SAVE'
+        save['command'] = self.save_state
+        save.pack( side=LEFT )
+
+        reset = Button( state_frame, **defaults )
+        reset['fg'] = '#9b9b9b'
+        reset['text'] = 'RESET'
+        reset['command'] = self.reset_state
+        reset.pack( side=LEFT )
+
+
+    def click( self, event ):
+        map( Toggle.set_state, self.scenes_switch )
+
+
+    def reset_state( self ):
+        map( Track.set_state, tracks )
+
+
+    def save_state( self ):
+        state = [ e.get_state() for e in self.tracks ]
+        try:
+            pickle.dump( state, open('ui_state', 'wb') )
+
+            if DEBUG:
+                print "State save!"
+
+        except Exception as e:
+            print "-----------------"
+            print ">> Can't save the state"
+            print e
+            print "-----------------"
+
 
 
 root = Tk()
@@ -391,59 +456,21 @@ root['bg'] = '#2b2b2b'
 root['padx'] = 25
 root['pady'] = 25
 
+
+# tracks container
 tracks_frame = Frame( root, **defaults )
 tracks_frame.pack()
 
+# TODO why's that?
+# a global keeping all tracks references
 tracks = []
 for i in range( 6 ):
     tracks.append( Track( tracks_frame, i ) )
 
-try:
-    scenes = pickle.load( open('ui_state', 'rb') )
-    # TODO make it run on first list from scenes!
-    for t, s in zip( tracks, scenes ):
-        t.set_state( s )
-except:
-    scenes = [ e.get_state() for e in tracks ]
-
-if DEBUG:
-    for t in tracks:
-        t.send_state()
-
-opts = { 'height': 20 }
-opts.update( defaults )
-Frame( root, **opts ).pack()
-
+# scenes switcher container
 state_frame = Frame( root, **defaults )
-state_frame.pack( side=LEFT )
+state_frame.pack( side=LEFT, pady=15 )
 
-scenes_switch = []
-for i in range( len(scenes) ):
-    opts = {
-        'text': i,
-        'width': 15
-    }
-    opts.update( defaults )
-    t = Toggle( state_frame, **opts )
-    t.pack( side=LEFT )
-    scenes_switch.append( t )
-
-scenes_switch[0].toggle()
-
-opts = { 'width': 15 }
-opts.update( defaults )
-Frame( state_frame, **opts ).pack( side=LEFT )
-
-save = Button( state_frame, **defaults )
-save['command'] = ( lambda: save_state(tracks) )
-save['fg'] = '#9b9b9b'
-save['text'] = 'SAVE'
-save.pack( side=LEFT )
-
-reset = Button( state_frame, **defaults )
-reset['command'] = ( lambda: map(Track.set_state, tracks) )
-reset['fg'] = '#9b9b9b'
-reset['text'] = 'RESET'
-reset.pack( side=LEFT )
+StateManager( state_frame, tracks )
 
 root.mainloop()
