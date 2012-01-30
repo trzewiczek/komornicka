@@ -381,7 +381,7 @@ class StateManager:
         self.tracks = tracks
 
         try:
-            self.scenes = pickle.load( open('ui_state', 'rb') )
+            self.scenes = pickle.load( open('scenes.db', 'rb') )
             # TODO make it run on first list from scenes!
             for t, s in zip( tracks, self.scenes ):
                 t.set_state( s )
@@ -438,7 +438,7 @@ class StateManager:
     def save_state( self ):
         state = [ e.get_state() for e in self.tracks ]
         try:
-            pickle.dump( state, open('ui_state', 'wb') )
+            pickle.dump( state, open('scenes.db', 'wb') )
 
             if DEBUG:
                 print "State save!"
