@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python
 from Tkinter import *
 import tkFont
 import math
@@ -7,7 +7,7 @@ import pickle
 import OSC
 
 # OSC setup
-send_address = '127.0.0.1', 5600
+send_address = '127.0.0.1', 57120
 c = OSC.OSCClient()
 c.connect( send_address )
 
@@ -196,7 +196,7 @@ class Track:
             msg.append( 1.0 - self.get_distance( s['x'], s['y'] ) )
 
             if DEBUG:
-                print '%s :: %s' % ( url, self.get_distance( s['x'], s['y'] ))
+                print '%s :: %s' % ( self.base_url+'/head/distance', self.get_distance( s['x'], s['y'] ))
 
         # send message
         c.send( msg )

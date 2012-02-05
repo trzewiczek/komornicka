@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python
 from Tkinter import *
 import tkFont
 import math
@@ -26,15 +26,15 @@ class Track:
     def __init__( self, master, inx ):
         frame = Frame( master, **defaults )
         frame['padx'] = 15
-        frame.pack( side=LEFT ) #.grid( row=1 )
+        frame.pack( side=LEFT )
 
-        self.base_url = '/HexaTrack_0%d' % (inx+1)
+        self.base_url = '/HexaTrack_0%d' % inx
 
         # mute button for the whole track
         opts = {
             'width': 100,
             'height': 20,
-            'text': 'TRACK %d' % (inx+1),
+            'text': 'TRACK %d' % inx,
             'on': False,
             'url': self.base_url + '/GATE/Gate'
         }
@@ -114,13 +114,14 @@ class Track:
 
         # inputs container
         inputs_frame = Frame( frame, **defaults )
-        inputs_frame.pack()# side=BOTTOM )
+        inputs_frame.pack()
         # create and collect references to inputs objects
         self.inputs = []
+        # starting from 1 for the users convienience
         for i in range( 4 ):
             self.inputs.append( Toggle( inputs_frame, text=i,
                                 width=17,
-                                url='%s/INPUT_%d/Value' % ( self.base_url, ( i+1 ) )) )
+                                url='%s/INPUT_%d/Value' % ( self.base_url, i )) )
             self.inputs[-1].pack( side=LEFT, padx=5 )
 
         self.master_cv = Canvas( frame, **defaults )
@@ -244,7 +245,7 @@ class Track:
             msg = OSC.OSCMessage()
             msg.setAddress( self.base_url + '/Speaker_0'+str(i+1)+'/Value' )
             msg.append( 1.0 - self.norm( self.get_distance( s['x'], s['y'] ), 0.03, 0.97 ) )
-            
+
             # send message
             c.send( msg )
 
@@ -252,9 +253,11 @@ class Track:
     def norm( self, value, in_min, in_max ):
         return (value - in_min) / (in_max - in_min)
 
+
     def norm_sum( self, vals ):
         s = sum( vals )
         return map( lambda e: float(e) / s, vals )
+
 
     def constrain( self, n, l, h ):
         if n < l:
@@ -392,11 +395,11 @@ class StateManager:
         try:
             self.scenes = pickle.load( open('scenes.db', 'rb') )
             # TODO make it run on first list from scenes!
-            for t, s in zip( tracks, self.scenes ):
+            for t, s in zip( tracks, self.scenes[0] ):
                 t.set_state( s )
         except:
             # initialize scenes with a current init state
-            self.scenes = [ [ e.get_state() for e in tracks ] ]
+            self.scenes = []
 
         if DEBUG:
             for t in tracks:
@@ -404,7 +407,7 @@ class StateManager:
 
         self.current_scene = 0
         self.scenes_switch = []
-        for i in range( len( self.scenes) ):
+        for i in range( len( self.scenes ) ):
             opts = {
                 'text': i,
                 'width': 15
@@ -422,9 +425,16 @@ class StateManager:
         opts.update( defaults )
         Frame( master, **opts ).pack( side=LEFT )
 
+        new = Button( state_frame, **defaults )
+        new['fg'] = '#9b9b9b'
+        new['text'] = 'NEW SCENE'
+        new['command'] = self.save_state
+        new.pack( side=LEFT )
+
+
         save = Button( state_frame, **defaults )
         save['fg'] = '#9b9b9b'
-        save['text'] = 'SAVE'
+        save['text'] = 'SAVE CHANGES'
         save['command'] = self.save_state
         save.pack( side=LEFT )
 
@@ -440,9 +450,13 @@ class StateManager:
 
 
     def save_state( self ):
-        state = [ e.get_state() for e in self.tracks ]
+        # just for testing solution
+        store = [[ e.get_state() for e in self.tracks ]]
+        self.reset_state()
+        store.append( [ e.get_state() for e in self.tracks ] )
+
         try:
-            pickle.dump( state, open('scenes.db', 'wb') )
+            pickle.dump( store, open('scenes.db', 'wb') )
 
             if DEBUG:
                 print "State save!"
@@ -468,7 +482,8 @@ tracks_frame.pack()
 # TODO why's that?
 # a global keeping all tracks references
 tracks = []
-for i in range( 8 ):
+# starting from 1 for the users convienience
+for i in range( 1, 9 ):
     tracks.append( Track( tracks_frame, i ) )
 
 # scenes switcher container
