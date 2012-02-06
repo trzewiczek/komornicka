@@ -36,7 +36,7 @@ class Track:
             'height': 20,
             'text': 'TRACK %d' % inx,
             'on': False,
-            'url': '/track/%d/on' % inx
+            'cback': self.send_gate
         }
         self.onoff = Toggle( frame, **opts )
         self.onoff.pack()
@@ -68,27 +68,27 @@ class Track:
         self.speakers = [
             {
                 'x':   0, 'y':   0, 'a': 'nw',
-                't': Toggle( frame, on=True, url=self.base_url+'speaker/0/on' )
+                't': Toggle( frame, on=True, cback=self.send_speakers )
             },
             {
                 'x': 100, 'y':   0, 'a': 'ne',
-                't': Toggle( frame, on=True, url=self.base_url+'speaker/1/on' )
+                't': Toggle( frame, on=True, cback=self.send_speakers )
             },
             {
                 'x':   0, 'y':  50, 'a':  'w',
-                't': Toggle( frame, on=True, url=self.base_url+'speaker/2/on' )
+                't': Toggle( frame, on=True, cback=self.send_speakers )
             },
             {
                 'x': 100, 'y':  50, 'a':  'e',
-                't': Toggle( frame, on=True, url=self.base_url+'speaker/3/on' )
+                't': Toggle( frame, on=True, cback=self.send_speakers )
             },
             {
                 'x':   0, 'y': 100, 'a': 'sw',
-                't': Toggle( frame, on=True, url=self.base_url+'speaker/4/on' )
+                't': Toggle( frame, on=True, cback=self.send_speakers )
             },
             {
                 'x': 100, 'y': 100, 'a': 'se',
-                't': Toggle( frame, on=True, url=self.base_url+'speaker/5/on' )
+                't': Toggle( frame, on=True, cback=self.send_speakers )
             }
         ]
 
@@ -108,20 +108,9 @@ class Track:
         self.cv.bind('<B1-Motion>', self.move_head )
 
         # separator
-        opts = { 'height': 10 }
+        opts = { 'height': 5 }
         opts.update( defaults )
         Frame( frame, **opts ).pack()
-
-        # inputs container
-        inputs_frame = Frame( frame, **defaults )
-        inputs_frame.pack()# side=BOTTOM )
-        # create and collect references to inputs objects
-        self.inputs = []
-        for i in range( 4 ):
-            self.inputs.append( Toggle( inputs_frame, text=i,
-                                width=17,
-                                url='%sinput/%d/on' % ( self.base_url, i ) ) )
-            self.inputs[-1].pack( side=LEFT, padx=5 )
 
         self.master_cv = Canvas( frame, **defaults )
         self.master_cv['bg']     = '#3b3b3b'
@@ -134,6 +123,22 @@ class Track:
                                                        fill='#9b9b9b', outline='' )
 
         self.master_cv.bind('<B1-Motion>', self.move_master )
+
+        # separator
+        opts = { 'height': 5 }
+        opts.update( defaults )
+        Frame( frame, **opts ).pack()
+
+        # inputs container
+        inputs_frame = Frame( frame, **defaults )
+        inputs_frame.pack()
+        # create and collect references to inputs objects
+        self.inputs = []
+        for i in range( 4 ):
+            self.inputs.append( Toggle( inputs_frame, text=i,
+                                width=17,
+                                cback=self.send_inputs ))
+            self.inputs[-1].pack( side=LEFT, padx=5 )
 
 
     def set_state( self, state={} ):
@@ -177,6 +182,14 @@ class Track:
         }
 
 
+    def send_gate( self ):
+        msg = OSC.OSCMessage()
+        msg.setAddress( self.base_url + 'on' )
+        msg.append( int(self.onoff.get_state()) )
+
+        c.send( msg )
+
+
     def send_state( self ):
         # track mute button
         self.onoff.send_state()
@@ -185,23 +198,42 @@ class Track:
         for s in self.speakers:
             s['t'].send_state()
 
-        # inputs
+        # input
         map( Toggle.send_state, self.inputs )
 
         # send OSC information about new distance from each speaker
         # prepare message
         msg = OSC.OSCMessage()
-        msg.setAddress( self.base_url + 'head/distance' )
+        msg.setAddress( self.base_url + 'head' )
         for i, s in enumerate( self.speakers ):
             msg.append( 1.0 - self.get_distance( s['x'], s['y'] ) )
 
             if DEBUG:
-                print '%s :: %s' % ( self.base_url+'/head/distance', self.get_distance( s['x'], s['y'] ))
+                print '%s :: %s' % ( self.base_url+'head', self.get_distance( s['x'], s['y'] ))
 
         # send message
         c.send( msg )
 
         self.move_master()
+
+    def send_speakers( self ):
+        msg = OSC.OSCMessage()
+        msg.setAddress( self.base_url + 'speakers' )
+        for i, skr in enumerate( self.speakers ):
+            msg.append( int(skr['t'].get_state()) )
+
+        # send message
+        c.send( msg )
+
+
+    def send_inputs( self ):
+        msg = OSC.OSCMessage()
+        msg.setAddress( self.base_url + 'inputs' )
+        for i, inp in enumerate( self.inputs ):
+            msg.append( int(inp.get_state()) )
+
+        # send message
+        c.send( msg )
 
 
     def move_master( self, event=None ):
@@ -239,7 +271,7 @@ class Track:
         # send OSC information about new distance from each speaker
         # prepare message
         msg = OSC.OSCMessage()
-        msg.setAddress( self.base_url + 'head/distance' )
+        msg.setAddress( self.base_url + 'head' )
         for i, s in enumerate( self.speakers ):
             msg.append( 1.0 - self.get_distance( s['x'], s['y'] ) )
 
@@ -331,7 +363,7 @@ class Toggle( Frame ):
         # these are the options not applicable to a frame
         self.text = self.pop( options, 'text', 'ON/OFF')
         self.on   = self.pop( options, 'on', False )
-        self.url  = self.pop( options, 'url', '/toggle/on' )
+        self.cback= self.pop( options, 'cback', (lambda: None))
 
 
     def set_state( self, state ):
@@ -341,11 +373,9 @@ class Toggle( Frame ):
     def get_state( self ):
         return self.on
 
-    def send_state( self ):
-        if DEBUG:
-            print "%s :: %s" % ( self.url, 1 if self.on else 0 )
+    def send_state( self, url='/no_url_provided' ):
         msg = OSC.OSCMessage()
-        msg.setAddress( self.url )
+        msg.setAddress( url )
         msg.append( 1 if self.on else 0 )
 
         c.send( msg )
@@ -361,14 +391,7 @@ class Toggle( Frame ):
             self.cv['background'] = '#4e4e4e'
             self.cv.itemconfigure( self.label, fill='#9b9b9b' )
 
-        if DEBUG:
-            print "%s :: %s" % ( self.url, 1 if self.on else 0 )
-
-        msg = OSC.OSCMessage()
-        msg.setAddress( self.url )
-        msg.append( 1 if self.on else 0 )
-
-        c.send( msg )
+        self.cback()
 
         return self.on
 
