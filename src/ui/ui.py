@@ -455,7 +455,7 @@ class StateManager:
             # initialize scenes with a current init state
             self.scenes = [ [ e.get_state() for e in tracks ] ]
 
-        self.scenes_switch = []
+        self.current_scene = 0
 
         # scenes switch canvas
         opts = {
@@ -473,6 +473,25 @@ class StateManager:
                 t.send_state()
 
         self.render_scenes_switch( 0 )
+
+        prev_scene = Button( master, **defaults )
+        prev_scene['fg'] = '#9b9b9b'
+        prev_scene['bg'] = '#363636'
+        prev_scene['text'] = '<<'
+        prev_scene['command'] = self.prev_scene
+        prev_scene.pack( side=LEFT )
+
+        next_scene = Button( master, **defaults )
+        next_scene['fg'] = '#9b9b9b'
+        next_scene['bg'] = '#363636'
+        next_scene['text'] = '>>'
+        next_scene['command'] = self.next_scene
+        next_scene.pack( side=LEFT )
+
+        # separator
+        opts = { 'width': 5 }
+        opts.update( defaults )
+        Frame( master, **opts ).pack( side=LEFT )
 
         changes = Button( master, **defaults )
         changes['fg'] = '#9b9b9b'
@@ -500,24 +519,22 @@ class StateManager:
         for i in range( len( self.scenes) ):
             offset  = 16 * i
             f_color = '#8b8b8b' if i == current_scene else '#3b3b3b'
-            t = self.switch_cv.create_rectangle( offset, 0,
-                                                 offset + 15, 15,
-                                                 fill=f_color, outline='' )
-            self.scenes_switch.append( t )
+            self.switch_cv.create_rectangle( offset, 0,
+                                             offset + 15, 15,
+                                             fill=f_color, outline='' )
 
     def click( self, event ):
-        current_scene = event.x / 16
-        self.render_scenes_switch( current_scene )
-        for t, s in zip( self.tracks, self.scenes[ current_scene ] ):
+        self.current_scene = event.x / 16
+        self.render_scenes_switch( self.current_scene )
+        for t, s in zip( self.tracks, self.scenes[ self.current_scene ] ):
             t.set_state( s )
 
     def get_current_state( self ):
         return [ e.get_state() for e in self.tracks ]
 
     def save_state( self ):
-        self.scenes[-1] = self.get_current_state()
+        self.scenes[ self.current_scene ] = self.get_current_state()
         try:
-            print self.scenes
             pickle.dump( self.scenes, open('scenes.db', 'wb') )
 
             if DEBUG:
@@ -539,7 +556,25 @@ class StateManager:
     def reset_state( self ):
         map( Track.set_state, tracks )
 
+    def next_scene( self ):
+        self.current_scene += 1
+        # if faces the end of the scenes, start from the beginning
+        if self.current_scene == len( self.scenes ):
+            self.current_scene = 0
 
+        self.render_scenes_switch( self.current_scene )
+        for t, s in zip( self.tracks, self.scenes[ self.current_scene ] ):
+            t.set_state( s )
+
+    def prev_scene( self ):
+        self.current_scene -= 1
+        # if faces the end of the scenes, start from the beginning
+        if self.current_scene < 0:
+            self.current_scene = len( self.scenes )-1
+
+        self.render_scenes_switch( self.current_scene )
+        for t, s in zip( self.tracks, self.scenes[ self.current_scene ] ):
+            t.set_state( s )
 
 root = Tk()
 root['bg'] = '#2b2b2b'
