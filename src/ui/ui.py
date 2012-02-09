@@ -1,10 +1,14 @@
 #!/usr/bin/python
+
+# TODO recode it in Qt!
 from Tkinter import *
 import tkFont
 import math
 import sys
 import pickle
 import OSC
+import random
+import multiprocessing as mp5
 
 # OSC setup
 send_address = '127.0.0.1', 57120
@@ -22,6 +26,7 @@ defaults = {
     'highlightthickness': 0
 }
 
+
 class Track:
     def __init__( self, master, inx ):
         frame = Frame( master, **defaults )
@@ -29,6 +34,7 @@ class Track:
         frame.pack( side=LEFT ) #.grid( row=1 )
 
         self.base_url = '/track/%d/' % inx
+        self.walker   = mp5.Process()
 
         # mute button for the whole track
         opts = {
@@ -140,6 +146,14 @@ class Track:
                                 cback=self.send_inputs ))
             self.inputs[-1].pack( side=LEFT, padx=5 )
 
+
+        # separator
+        opts = { 'height': 5 }
+        opts.update( defaults )
+        Frame( frame, **opts ).pack()
+
+        self.walker_button = Toggle( frame, text='W', width=25, cback=self.walk_and_stop )
+        self.walker_button.pack()
 
     def set_state( self, state={} ):
         try:
@@ -258,12 +272,42 @@ class Track:
         # send message
         c.send( msg )
 
+    # TODO get rid of it
+    def walk_and_stop( self ):
+        if self.walker.is_alive():
+            # stop the walker and bring the head icon back
+            self.walker.terminate()
+            self.head = self.cv.create_rectangle( self.hx - 3, self.hy - 3,
+                                                  self.hx + 3, self.hy + 3,
+                                                  fill='#6bbb7b', outline='' )
+        else:
+            # start the walker
+            self.walker = mp5.Process( target=Track.walk_around, args=( self, self.walker.is_alive() ) )
+            self.walker.start()
+            # hide the head icon
+            self.cv.delete( self.head )
+
+
+    def walk_around( self, onoff ):
+        import time
+        while True:
+            event = {
+                'x': self.hx + ( 2.5 - random.random() * 5 ),
+                'y': self.hy + ( 2.5 - random.random() * 5 )
+            }
+
+            self.move_head( event )
+            time.sleep( 0.02 )
 
     def move_head( self, event ):
         '''Callback for the head move'''
         # keep head inside the panel
-        self.hx = self.constrain( event.x, 18, 112 )
-        self.hy = self.constrain( event.y, 3, 97 )
+        try:
+            self.hx = self.constrain( event.x, 18, 112 )
+            self.hy = self.constrain( event.y, 3, 97 )
+        except AttributeError:
+            self.hx = self.constrain( event['x'], 18, 112 )
+            self.hy = self.constrain( event['y'], 3, 97 )
 
         # move it to a new position
         self.cv.coords( self.head, self.hx-3, self.hy-3, self.hx+3, self.hy+3 )
@@ -397,71 +441,84 @@ class Toggle( Frame ):
 
 class StateManager:
     def __init__( self, master, tracks ):
-        frame = Frame( master, **defaults )
-        frame['pady'] = 15
-        frame.pack( side=LEFT )
+        self.frame = Frame( master, **defaults )
+        self.frame['pady'] = 15
+        self.frame.pack( )#side=LEFT )
 
         self.tracks = tracks
 
         try:
             self.scenes = pickle.load( open('scenes.db', 'rb') )
-            # TODO make it run on first list from scenes!
-            for t, s in zip( tracks, self.scenes ):
+            for t, s in zip( tracks, self.scenes[0] ):
                 t.set_state( s )
         except:
             # initialize scenes with a current init state
             self.scenes = [ [ e.get_state() for e in tracks ] ]
 
+        self.scenes_switch = []
+
+        # scenes switch canvas
+        opts = {
+            'width'  : 500,
+            'height' : 15,
+        }
+        opts.update( defaults )
+
+        self.switch_cv = Canvas( self.frame, **opts )
+        self.switch_cv.pack()
+
+        self.switch_cv.bind( '<Button-1>', self.click )
         if DEBUG:
             for t in tracks:
                 t.send_state()
 
-        self.current_scene = 0
-        self.scenes_switch = []
-        for i in range( len( self.scenes) ):
-            opts = {
-                'text': i,
-                'width': 15
-            }
-            opts.update( defaults )
-            t = Toggle( frame, **opts )
-            t.pack( side=LEFT )
+        self.render_scenes_switch( 0 )
 
-            self.scenes_switch.append( t )
+        changes = Button( master, **defaults )
+        changes['fg'] = '#9b9b9b'
+        changes['bg'] = '#363636'
+        changes['text'] = 'SAVE CHANGES'
+        changes['command'] = self.save_state
+        changes.pack( side=LEFT )
 
-        # highlight the current (first?) scene
-        self.scenes_switch[ self.current_scene ].toggle()
-        frame.bind('<Button-1>', self.click )
-
-        opts = { 'width':15 }
-        opts.update( defaults )
-        Frame( master, **opts ).pack( side=LEFT )
-
-        save = Button( state_frame, **defaults )
+        save = Button( master, **defaults )
         save['fg'] = '#9b9b9b'
-        save['text'] = 'SAVE'
-        save['command'] = self.save_state
-        save.pack( side=LEFT )
+        save['bg'] = '#363636'
+        save['text'] = 'SAVE & NEW'
+        save['command'] = self.save_state_and_new
+        save.pack( side=LEFT, padx=1 )
 
-        reset = Button( state_frame, **defaults )
+        reset = Button( master, **defaults )
         reset['fg'] = '#9b9b9b'
+        reset['bg'] = '#363636'
         reset['text'] = 'RESET'
         reset['command'] = self.reset_state
         reset.pack( side=LEFT )
 
+    def render_scenes_switch( self, current_scene ):
+        self.switch_cv.delete( ALL )
+        for i in range( len( self.scenes) ):
+            offset  = 16 * i
+            f_color = '#8b8b8b' if i == current_scene else '#3b3b3b'
+            t = self.switch_cv.create_rectangle( offset, 0,
+                                                 offset + 15, 15,
+                                                 fill=f_color, outline='' )
+            self.scenes_switch.append( t )
 
     def click( self, event ):
-        map( Toggle.set_state, self.scenes_switch )
+        current_scene = event.x / 16
+        self.render_scenes_switch( current_scene )
+        for t, s in zip( self.tracks, self.scenes[ current_scene ] ):
+            t.set_state( s )
 
-
-    def reset_state( self ):
-        map( Track.set_state, tracks )
-
+    def get_current_state( self ):
+        return [ e.get_state() for e in self.tracks ]
 
     def save_state( self ):
-        state = [ e.get_state() for e in self.tracks ]
+        self.scenes[-1] = self.get_current_state()
         try:
-            pickle.dump( state, open('scenes.db', 'wb') )
+            print self.scenes
+            pickle.dump( self.scenes, open('scenes.db', 'wb') )
 
             if DEBUG:
                 print "State save!"
@@ -471,6 +528,16 @@ class StateManager:
             print ">> Can't save the state"
             print e
             print "-----------------"
+
+    def save_state_and_new( self ):
+        self.save_state()
+        self.reset_state()
+
+        self.scenes.append( self.get_current_state() )
+        self.render_scenes_switch( len(self.scenes ) - 1 )
+
+    def reset_state( self ):
+        map( Track.set_state, tracks )
 
 
 
