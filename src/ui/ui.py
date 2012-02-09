@@ -507,12 +507,26 @@ class StateManager:
         save['command'] = self.save_state_and_new
         save.pack( side=LEFT, padx=1 )
 
+        insert = Button( master, **defaults )
+        insert['fg'] = '#9b9b9b'
+        insert['bg'] = '#363636'
+        insert['text'] = 'INSERT NEW'
+        insert['command'] = self.insert_new
+        insert.pack( side=LEFT, padx=1 )
+
+        delete = Button( master, **defaults )
+        delete['fg'] = '#9b9b9b'
+        delete['bg'] = '#363636'
+        delete['text'] = 'DELETE'
+        delete['command'] = self.delete_scene
+        delete.pack( side=LEFT )
+
         reset = Button( master, **defaults )
         reset['fg'] = '#9b9b9b'
         reset['bg'] = '#363636'
         reset['text'] = 'RESET'
-        reset['command'] = self.reset_state
-        reset.pack( side=LEFT )
+        reset['command'] = self.restore_state
+        reset.pack( side=LEFT, padx=2 )
 
     def render_scenes_switch( self, current_scene ):
         self.switch_cv.delete( ALL )
@@ -546,15 +560,42 @@ class StateManager:
             print e
             print "-----------------"
 
+    def insert_new( self ):
+        off   = self.current_scene+1
+        self.scenes = self.scenes[:off] + [ [] ] + self.scenes[off:]
+        self.current_scene += 1
+
+        self.reset_state()
+        self.scenes[ self.current_scene ] = self.get_current_state()
+
+        self.render_scenes_switch( self.current_scene )
+
+    def delete_scene( self ):
+        del self.scenes[ self.current_scene ]
+        self.current_scene -= 1
+        if self.current_scene < 0:
+            self.current_scene = 0
+
+        self.render_scenes_switch( self.current_scene )
+        for t, s in zip( self.tracks, self.scenes[ self.current_scene ] ):
+            t.set_state( s )
+        self.save_state()
+
     def save_state_and_new( self ):
         self.save_state()
-        self.reset_state()
 
+        self.current_scene = len( self.scenes )
+        self.reset_state()
         self.scenes.append( self.get_current_state() )
-        self.render_scenes_switch( len(self.scenes ) - 1 )
+
+        self.render_scenes_switch( len( self.scenes ) - 1 )
 
     def reset_state( self ):
         map( Track.set_state, tracks )
+
+    def restore_state( self ):
+        for t, s in zip( self.tracks, self.scenes[ self.current_scene ] ):
+            t.set_state( s )
 
     def next_scene( self ):
         self.current_scene += 1
