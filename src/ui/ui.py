@@ -572,9 +572,13 @@ class StateManager:
 
     def delete_scene( self ):
         del self.scenes[ self.current_scene ]
+
         self.current_scene -= 1
         if self.current_scene < 0:
             self.current_scene = 0
+        if len( self.scenes ) == 0:
+            self.reset_state()
+            self.scenes = [ self.get_current_state() ]
 
         self.render_scenes_switch( self.current_scene )
         for t, s in zip( self.tracks, self.scenes[ self.current_scene ] ):

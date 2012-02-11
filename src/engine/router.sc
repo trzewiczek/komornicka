@@ -40,6 +40,9 @@ SynthDef.new( "HexaPane", {
 ~i3 = Bus.audio( s, 1 );
 ~i4 = Bus.audio( s, 1 );
 
+~sources = Group.new;
+~effects = Group.after( ~sources );
+
 ~osc_adder = {|track,inx|
     track.post;
     " :: ".post;
@@ -72,21 +75,17 @@ SynthDef.new( "HexaPane", {
 
 
 (
-~t6 = Synth.new( "HexaPane", [\buss, [~i1,~i2,~i3,~i4]] );
-~t5 = Synth.before( ~t6, "HexaPane", [\buss, [~i1,~i2,~i3,~i4]] );
-~t4 = Synth.before( ~t5, "HexaPane", [\buss, [~i1,~i2,~i3,~i4]] );
-~t3 = Synth.before( ~t4, "HexaPane", [\buss, [~i1,~i2,~i3,~i4]] );
-~t2 = Synth.before( ~t3, "HexaPane", [\buss, [~i1,~i2,~i3,~i4]] );
-~t1 = Synth.before( ~t2, "HexaPane", [\buss, [~i1,~i2,~i3,~i4]] );
+y = Synth.new( "player", [\bus, ~i1, \bufnum, b.bufnum], ~sources );
+z = Synth.new( "player", [\bus, ~i2, \del, 0.5, \bufnum, b.bufnum], ~sources );
+v = Synth.new( "player", [\bus, ~i3, \del, 1.1, \bufnum, b.bufnum], ~sources );
+w = Synth.new( "player", [\bus, ~i4, \del, 1.4, \bufnum, b.bufnum], ~sources );
 
-//y = Synth.before( ~t1, "sig", [\bus, ~i1] );
-//z = Synth.before( ~t1, "sig", [\bus, ~i2, \freq, 300] );
-//v = Synth.before( ~t1, "sig", [\bus, ~i3, \freq, 350] );
-//w = Synth.before( ~t1, "sig", [\bus, ~i4, \freq, 400] );
-y = Synth.before( ~t1, "player", [\bus, ~i1, \bufnum, b.bufnum] );
-z = Synth.before( ~t1, "player", [\bus, ~i2, \del, 0.5, \bufnum, b.bufnum] );
-v = Synth.before( ~t1, "player", [\bus, ~i3, \del, 1.1, \bufnum, b.bufnum] );
-w = Synth.before( ~t1, "player", [\bus, ~i4, \del, 1.4, \bufnum, b.bufnum] );
+~t6 = Synth.new( "HexaPane", [\buss, [~i1,~i2,~i3,~i4]], ~effects );
+~t5 = Synth.new( "HexaPane", [\buss, [~i1,~i2,~i3,~i4]], ~effects );
+~t4 = Synth.new( "HexaPane", [\buss, [~i1,~i2,~i3,~i4]], ~effects );
+~t3 = Synth.new( "HexaPane", [\buss, [~i1,~i2,~i3,~i4]], ~effects );
+~t2 = Synth.new( "HexaPane", [\buss, [~i1,~i2,~i3,~i4]], ~effects );
+~t1 = Synth.new( "HexaPane", [\buss, [~i1,~i2,~i3,~i4]], ~effects );
 )
 
 (
@@ -99,3 +98,19 @@ w = Synth.before( ~t1, "player", [\bus, ~i4, \del, 1.4, \bufnum, b.bufnum] );
 )
 
 
+
+
+
+(
+//~t6 = Synth.new( "HexaPane", [\buss, [~i1,~i2,~i3,~i4]] );
+//~t5 = Synth.before( ~t6, "HexaPane", [\buss, [~i1,~i2,~i3,~i4]] );
+//~t4 = Synth.before( ~t5, "HexaPane", [\buss, [~i1,~i2,~i3,~i4]] );
+//~t3 = Synth.before( ~t4, "HexaPane", [\buss, [~i1,~i2,~i3,~i4]] );
+//~t2 = Synth.before( ~t3, "HexaPane", [\buss, [~i1,~i2,~i3,~i4]] );
+//~t1 = Synth.before( ~t2, "HexaPane", [\buss, [~i1,~i2,~i3,~i4]] );
+//
+//y = Synth.before( ~t1, "player", [\bus, ~i1, \bufnum, b.bufnum] );
+//z = Synth.before( ~t1, "player", [\bus, ~i2, \del, 0.5, \bufnum, b.bufnum] );
+//v = Synth.before( ~t1, "player", [\bus, ~i3, \del, 1.1, \bufnum, b.bufnum] );
+//w = Synth.before( ~t1, "player", [\bus, ~i4, \del, 1.4, \bufnum, b.bufnum] );
+)
