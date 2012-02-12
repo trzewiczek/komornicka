@@ -31,7 +31,7 @@ SynthDef.new( \chocker02, {|bus, len=1, pan=0, del=0, gate=0|
                         EnvGen.ar( Env.adsr(a,d,1,r,1,3), gate ), pan ));
 }).send(s);
 
-b = Buffer.read(s, "/home/beet/code/hexapane/src/engine/anita_solo_long.wav");
+b = Buffer.read(s, "C:\\sample\\anita_solo_01.wav");
 
 ~send = Bus.audio( s, 1 );
 
@@ -40,15 +40,17 @@ b = Buffer.read(s, "/home/beet/code/hexapane/src/engine/anita_solo_long.wav");
 )
 (
 Synth.new( \player, [\bus, ~send, \bufnum, b.bufnum], ~sources );
-Synth.new( \player, [\bus, 0, \bufnum, b.bufnum, \gate, 0.3], ~sources );
-Synth.new( \player, [\bus, 1, \bufnum, b.bufnum, \gate, 0.3], ~sources );
+Synth.new( \player, [\bus, 0, \bufnum, b.bufnum, \gain, 0.3], ~sources );
+Synth.new( \player, [\bus, 1, \bufnum, b.bufnum, \gain, 0.3], ~sources );
 x = Synth.new( \chocker02, [\del, 0, \bus, ~send, \len, 0.5, \pan, 0], ~effects );
 y = Synth.new( \chocker02, [\del, 0.3, \bus, ~send, \len, 0.5, \pan, 0], ~effects );
 z = Synth.new( \chocker02, [\del, 0.7, \bus, ~send, \len, 0.5, \pan, 0], ~effects );
 v = Synth.new( \chocker02, [\del, 0.9, \bus, ~send, \len, 0.5, \pan, 0], ~effects );
 )
-(
-Routine({
+
+
+( // FINAL CHOCKER
+r = Routine({
     var ins = [ x, y, z, v ];
     var synth, len = 0.2 + 0.3.rand;
 
@@ -57,8 +59,7 @@ Routine({
             e.set( \gate, 0 );
         });
         ( 0.1 * len ).wait;
-        5.wait;
-        
+                
         len = 0.5 + 0.5.rand;
         synth = ins.choose;
 
@@ -67,13 +68,14 @@ Routine({
 
         len.wait;
     };
-}).play;
+});
+r.play;
 )
-
+r.stop;
 
 
 ( // CHOCKER 02
-Routine({
+r = Routine({
     var ins = [ x, y, z, v ];
     var synth, len = 0.2 + 0.3.rand;
 
@@ -91,7 +93,8 @@ Routine({
 
         len.wait;
     };
-}).play;
+});
+r.play;
 )
 
 
@@ -114,3 +117,4 @@ Routine({
 
 
 
+       
