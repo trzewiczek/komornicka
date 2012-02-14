@@ -172,6 +172,8 @@ SynthDef.new( \player, {|bus=0, bufnum=0, gain=1|
 )
 
 
+
+
 (
 {
 	var a, e, c, scale;
