@@ -16,16 +16,9 @@ Software: trzewiczek
 Bydgoszcz/Lublin, Poland
 
 
-REQUIREMENTS
-============
-python 2.x with Tkinter
-
-pyliblo
-
-
 LICENSE
 =======
-The pyliblo dependency library is published under LGPL license and can be found here: http://das.nasophon.de/pyliblo/
+OSC library is licensed under LGPL licens with attribution to Daniel Holth and Clinton McChesney
 
 Some inspiration for Tkinter subclassing taken from Rick Lawson's BusyBar found here http://tkinter.unpythonic.net/wiki/BusyBar
 
